@@ -2,6 +2,7 @@ from ursina import *
 import random
 import trimesh
 from ursina.shaders import lit_with_shadows_shader
+from ursina.prefabs.dropdown_menu import DropdownMenu, DropdownMenuButton
 
 app = Ursina()
 
@@ -35,24 +36,31 @@ dice = Entity(
 light = DirectionalLight(shadows=True)
 light.look_at(Vec3(0.5, -1, -1))
 
-Text(text='Number of sides:', y=-.15, x=-0.2, scale=0.7)
-n_input = InputField(
-    text='6', 
-    y=-.2, 
-    scale=(0.2, 0.05),
-    max_width=7
+selected_sides = 6 
+
+def set_sides(n):
+    global selected_sides
+    selected_sides = n
+    dropdown.text = str(n)
+
+Text(text='Number of sides:', x=-.5, y=-.15, scale=0.7)
+dropdown = DropdownMenu(
+    text='6',
+    x=-.5,
+    y=-.2,
+    buttons=(
+        DropdownMenuButton('4', on_click=Func(set_sides, 4)),
+        DropdownMenuButton('6', on_click=Func(set_sides, 6)),
+        DropdownMenuButton('8', on_click=Func(set_sides, 8)),
+        DropdownMenuButton('10', on_click=Func(set_sides, 10)),
+        DropdownMenuButton('12', on_click=Func(set_sides, 12)),
+        DropdownMenuButton('20', on_click=Func(set_sides, 20)),
+    )
 )
 roll_button = Button(text='Roll Dice', y=-.3, scale=(0.2, 0.05), color=color.azure)
 result_text = Text(text='Result: ', position=(-0.7, 0.4), scale=1.5)
 
 def roll_dice():
-    try:
-        n = int(n_input.text)
-        if n < 1:
-            raise ValueError
-    except:
-        result_text.text = 'Invalid input'
-        return
     
     dice.rotation = (0, 0, 0)
     dice.position = (0, 1, 0)
@@ -62,7 +70,7 @@ def roll_dice():
     dice.animate_position((0, 1.5, 0), duration=0.5, curve=curve.out_quad)
     dice.animate_position((0, 1, 0), duration=0.5, delay=0.5, curve=curve.in_quad)
     
-    result = random.randint(1, n)
+    result = random.randint(1, selected_sides)
     invoke(set_result, result, delay=2)
 
 def set_result(result):
