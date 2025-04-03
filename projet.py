@@ -1,16 +1,39 @@
 from ursina import *
 import random
 import trimesh
+from ursina.shaders import lit_with_shadows_shader
 
 app = Ursina()
 
+# Création d'un icosaèdre avec trimesh
 icosahedron_mesh = trimesh.creation.icosahedron()
 
 vertices = icosahedron_mesh.vertices.tolist()
 faces = icosahedron_mesh.faces.tolist()
-custom_mesh = Mesh(vertices=vertices, triangles=faces)
+normals = icosahedron_mesh.vertex_normals.tolist() #les normals correspondent à l'orientation des faces
 
-dice = Entity(model=custom_mesh, texture='grid.png', scale=2, y=1)
+# Génération de coordonnées UV simples (pour pouvoir appliquer les textures)
+uvs = [[(v[0] + 1) / 2, (v[1] + 1) / 2] for v in vertices]
+
+custom_mesh = Mesh(
+    vertices=vertices,
+    triangles=faces,
+    normals=normals,
+    uvs=uvs,
+    mode='triangle'
+)
+
+dice = Entity(
+    model=custom_mesh, 
+    texture='brick',
+    color='#ff0000',
+    scale=2, 
+    y=1, 
+    shader=lit_with_shadows_shader
+)
+
+light = DirectionalLight(shadows=True)
+light.look_at(Vec3(0.5, -1, -1))
 
 Text(text='Number of sides:', y=-.15, x=-0.2, scale=0.7)
 n_input = InputField(
@@ -49,11 +72,12 @@ def set_result(result):
 
 roll_button.on_click = roll_dice
 
-Text(text='(You can orbit camera with right mouse button)', 
-     position=(-0.85, -0.45), 
-     scale=0.7, 
-     color=color.gray)
-
+Text(
+    text='(You can orbit camera with right mouse button)', 
+    position=(-0.85, -0.45), 
+    scale=0.7, 
+    color=color.gray
+)
 
 EditorCamera()
 
