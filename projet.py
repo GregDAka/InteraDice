@@ -3,6 +3,7 @@ import random
 import trimesh
 from ursina.shaders import lit_with_shadows_shader
 from ursina.prefabs.dropdown_menu import DropdownMenu, DropdownMenuButton
+from ursina.prefabs.radial_menu import RadialMenu, RadialMenuButton
 
 app = Ursina()
 
@@ -41,22 +42,28 @@ selected_sides = 6
 def set_sides(n):
     global selected_sides
     selected_sides = n
-    dropdown.text = str(n)
+    sides_button.text = str(n)
 
-Text(text='Number of sides:', x=-.5, y=-.15, scale=0.7)
-dropdown = DropdownMenu(
+radialmenu = RadialMenu(
+    text='6',
+    buttons=(
+        RadialMenuButton(text='4', on_click=Func(set_sides, 4)),
+        RadialMenuButton(text='6', on_click=Func(set_sides, 6)),
+        RadialMenuButton(text='8', on_click=Func(set_sides, 8)),
+        RadialMenuButton(text='20', on_click=Func(set_sides, 20)),
+    ),
+    enabled = False
+)
+
+Text(text='Number of sides:', x=-.575, y=-.15, scale=0.7)
+sides_button = Button(
     text='6',
     x=-.5,
     y=-.2,
-    buttons=(
-        DropdownMenuButton('4', on_click=Func(set_sides, 4)),
-        DropdownMenuButton('6', on_click=Func(set_sides, 6)),
-        DropdownMenuButton('8', on_click=Func(set_sides, 8)),
-        DropdownMenuButton('10', on_click=Func(set_sides, 10)),
-        DropdownMenuButton('12', on_click=Func(set_sides, 12)),
-        DropdownMenuButton('20', on_click=Func(set_sides, 20)),
-    )
+    scale=(0.1, 0.05),
+    on_click=Func(setattr, radialmenu, 'enabled', True)
 )
+
 roll_button = Button(text='Roll Dice', y=-.3, scale=(0.2, 0.05), color=color.azure)
 result_text = Text(text='Result: ', position=(-0.7, 0.4), scale=1.5)
 
