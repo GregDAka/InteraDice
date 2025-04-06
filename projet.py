@@ -10,34 +10,11 @@ app = Ursina()
 
 sky = Sky()
 
-icosahedron_mesh = trimesh.creation.box(extents=[2, 2, 2])
-
-vertices = icosahedron_mesh.vertices.tolist()
-faces = [face[::-1] for face in icosahedron_mesh.faces.tolist()]
-normals = icosahedron_mesh.vertex_normals.tolist() #les normals correspondent à l'orientation des faces
-
-custom_mesh = Mesh(
-    vertices=vertices,
-    triangles=faces,
-    normals=normals,
-    mode='triangle'
-)
-
-dice = Entity(
-    model=custom_mesh,
-    color='#6800ff',
-    normal_map='brick_normal',
-    scale=2, 
-    y=1, 
-    shader=lit_with_shadows_shader
-)
-
-light = DirectionalLight(shadows=True)
-light.look_at(Vec3(-0.5, -1, 1))
-
 selected_sides = 6 
+dice = None
 
 def set_sides(n):
+    """Permet la création d'un dé à n faces"""
     global selected_sides
     global dice
     selected_sides = n
@@ -45,19 +22,31 @@ def set_sides(n):
 
     dice_mesh = create_dice(n)
     vertices = dice_mesh.vertices.tolist()
-    normals = dice_mesh.vertex_normals.tolist()
+    normals = dice_mesh.face_normals.tolist()
+    #trimesh met les faces dans le sens inverse de celui voulu par ursina, on les inverses donc
     faces = [face[::-1] for face in dice_mesh.faces.tolist()]
+
+    new_vertices = []
+    new_faces = []
+    new_normals = []
+
+    # duplication des sommets (vertices) pour éviter le lissage des arretes
+    for i, face in enumerate(faces):
+        v0, v1, v2 = vertices[face[0]], vertices[face[1]], vertices[face[2]]
+        new_vertices.extend([v0, v1, v2])
+        new_faces.append([3*i, 3*i+1, 3*i+2])
+        new_normals.extend([normals[i]] * 3)
     
     custom_mesh = Mesh(
-        vertices=vertices,
-        triangles=faces,
-        normals=normals,
+        vertices=new_vertices,
+        triangles=new_faces,
+        normals=new_normals,
         mode='triangle'
     )
     if 'dice' in globals() and dice:
             dice.disable()
             destroy(dice)
-        
+    
     dice = Entity(
         model=custom_mesh,
         color='6800ff',
@@ -66,7 +55,9 @@ def set_sides(n):
         shader=lit_with_shadows_shader
     )
 
+
 def create_dice(n):
+    """Permet la création Mesh en fonction du nombre de face donné"""
     if n == 4:  # Tétraèdre
         vertices = [
             [0, 0, 1], 
@@ -91,49 +82,12 @@ def create_dice(n):
             [1, 4, 2], [1, 3, 4], [1, 5, 3], [1, 2, 5]
         ]
         return trimesh.Trimesh(vertices=vertices, faces=faces)
-    
-    elif n == 10:  # Pentagonal antiprisme
-        vertices = []
-        # Pentagone supérieur
-        for i in range(5):
-            angle = 2 * np.pi * i / 5
-            vertices.append([np.cos(angle), np.sin(angle), 0.5])
-        # Pentagone inférieur (tourné)
-        for i in range(5):
-            angle = 2 * np.pi * (i + 0.5) / 5
-            vertices.append([np.cos(angle), np.sin(angle), -0.5])
-        
-        faces = []
-        for i in range(5):
-            faces.append([i, (i+1)%5, i+5])
-        for i in range(5):
-            faces.append([(i+1)%5, (i+1)%5+5, i+5])
-
-        return trimesh.Trimesh(vertices=vertices, faces=faces)
-        
-    elif n == 12:  # Dodécaèdre
-        phi = (1 + np.sqrt(5)) / 2
-        vertices = [
-            [1, 1, 1], [1, 1, -1], [1, -1, 1], [1, -1, -1],
-            [-1, 1, 1], [-1, 1, -1], [-1, -1, 1], [-1, -1, -1],
-            [0, phi, 1/phi], [0, phi, -1/phi], [0, -phi, 1/phi], [0, -phi, -1/phi],
-            [1/phi, 0, phi], [1/phi, 0, -phi], [-1/phi, 0, phi], [-1/phi, 0, -phi],
-            [phi, 1/phi, 0], [phi, -1/phi, 0], [-phi, 1/phi, 0], [-phi, -1/phi, 0]
-        ]
-        
-        faces = [
-            [0, 8, 4, 14, 12], [0, 16, 17, 2, 12], [0, 8, 9, 1, 16],
-            [1, 9, 5, 15, 13], [1, 16, 17, 3, 13], [2, 10, 6, 14, 12],
-            [2, 10, 11, 3, 17], [3, 11, 7, 15, 13], [4, 8, 9, 5, 18],
-            [4, 18, 19, 6, 14], [5, 18, 19, 7, 15], [6, 10, 11, 7, 19]
-        ]
-        return trimesh.Trimesh(vertices=vertices, faces=faces)
         
     elif n == 20:  # Icosaèdre
         return trimesh.creation.icosahedron()
     
 radialmenu = RadialMenu(
-    text='6',
+    text='20',
     buttons=(
         RadialMenuButton(text='4', on_click=Func(set_sides, 4)),
         RadialMenuButton(text='6', on_click=Func(set_sides, 6)),
@@ -156,7 +110,7 @@ roll_button = Button(text='Roll Dice', y=-.3, scale=(0.2, 0.05), color=color.azu
 result_text = Text(text='Result: ', position=(-0.7, 0.4), scale=1.5, color=color.black)
 
 def roll_dice():
-    
+    """Permet de faire tourner le dé dans une direction aléatoire"""
     dice.rotation = (0, 0, 0)
     dice.position = (0, 1, 0)
     
@@ -169,6 +123,7 @@ def roll_dice():
     invoke(set_result, result, delay=2)
 
 def set_result(result):
+    """Permet d'actualiser le résultat dans le Text: result_text"""
     result_text.text = f'Result: {result}'
     result_text.color = color.green
     invoke(lambda: setattr(result_text, 'color', color.black), delay=0.5)
@@ -182,6 +137,13 @@ Text(
     color=color.gray
 )
 
-EditorCamera()
+#initialisation du premier dé à 20 faces
+set_sides(20)
+
+camera = EditorCamera()
+
+light = DirectionalLight(shadows=True)
+light.parent = camera
+light.look_at(Vec3(0, 0, 1))
 
 app.run()
